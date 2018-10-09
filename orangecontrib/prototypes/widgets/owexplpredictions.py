@@ -699,7 +699,7 @@ class GraphAttributes:
         self.blue_pen = QPen(QBrush(QColor(0x33, 0x00, 0xff)), 2)
         """placeholders"""
         self.rect_height = rect_height
-        self.max_contrib = None
+        self.max_contrib = .5
         self.atr_area_h = None
         self.atr_area_w = None
         self.scale = None
@@ -743,8 +743,11 @@ class GraphAttributes:
 
         coords = self.split_boxes_area(
             self.atr_area_h, self.num_of_atr, header_h)
-        self.max_contrib = np.max(
+        max_contr = np.max(
             abs(explanations.X[:, 0]) + explanations.X[:, 1])
+        """useful when there is no attribute contributions, for example constant predictor"""
+        if max_contr > 0.0:
+            self.max_contrib = max_contr
         self.unit = self.get_scale()
         unit_pixels = np.floor(self.atr_area_w/(self.max_contrib/self.unit))
         self.scale = unit_pixels / self.unit
@@ -790,26 +793,27 @@ class GraphAttributes:
 
         previous = 0
         recomended_d = 35
-        for i in range(0, int(self.max_contrib / self.unit) + 1):
-            x = unit_pixels * i
-            """grid lines"""
-            self.scene.addLine(x + fix, first_y, x + fix,
-                               line_y, self.light_gray_pen)
-            self.scene.addLine(-x + fix, first_y, -x + fix,
-                               line_y, self.light_gray_pen)
+        if self.max_contrib > 0.0:
+            for i in range(0, int(self.max_contrib / self.unit) + 1):
+                x = unit_pixels * i
+                """grid lines"""
+                self.scene.addLine(x + fix, first_y, x + fix,
+                                   line_y, self.light_gray_pen)
+                self.scene.addLine(-x + fix, first_y, -x + fix,
+                                   line_y, self.light_gray_pen)
 
-            self.scene.addLine(x + fix, line_y, x + fix, line_y +
-                               marking_len, self.black_pen)
-            self.scene.addLine(-x + fix, line_y, -x + fix, line_y +
-                               marking_len, self.black_pen)
-            """markings on the ruler"""
-            if x + fix - previous > recomended_d:
-                self.place_centered(self.format_marking(
-                    i*self.unit), x + fix, line_y + marking_len + 5)
-                if x > 0:
-                    self.place_centered(
-                        self.format_marking(-i*self.unit), -x + fix, line_y + marking_len + 5)
-                previous = x + fix
+                self.scene.addLine(x + fix, line_y, x + fix, line_y +
+                                   marking_len, self.black_pen)
+                self.scene.addLine(-x + fix, line_y, -x + fix, line_y +
+                                   marking_len, self.black_pen)
+                """markings on the ruler"""
+                if x + fix - previous > recomended_d:
+                    self.place_centered(self.format_marking(
+                        i*self.unit), x + fix, line_y + marking_len + 5)
+                    if x > 0:
+                        self.place_centered(
+                            self.format_marking(-i*self.unit), -x + fix, line_y + marking_len + 5)
+                    previous = x + fix
 
     def format_marking(self, x, places=2):
         return QGraphicsSimpleTextItem(str(round(x, places)), None)
